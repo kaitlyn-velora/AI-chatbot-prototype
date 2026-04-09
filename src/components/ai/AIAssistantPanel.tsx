@@ -355,14 +355,14 @@ export function AIAssistantPanel({
       className={`flex min-h-0 shrink-0 flex-col self-stretch border-l border-neutral-border bg-neutral-bg transition-[width,min-width] duration-200 ${
         panelWide ? 'w-[min(32rem,calc(100vw-2rem))] min-w-[300px]' : 'w-[360px] min-w-[360px]'
       }`}
-      aria-label="Accounting copilot"
+      aria-label="Accounting assistant"
     >
       {/* Header */}
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-neutral-border px-4 py-2.5">
         <div className="min-w-0 flex items-center gap-2">
           <Sparkles className="shrink-0 text-primary-700" strokeWidth={1.75} style={{ width: '20px', height: '20px' }} />
           <h2 className="text-neutral-text font-vl-semibold tracking-aplos" style={{ fontSize: '15px' }}>
-            Copilot
+            Assistant
           </h2>
           {geminiEnabled && (
             <span
@@ -462,7 +462,7 @@ export function AIAssistantPanel({
                   handleSubmit();
                 }
               }}
-              aria-label="Ask copilot"
+              aria-label="Ask assistant"
               ref={textareaRef}
             />
             <button

@@ -18,7 +18,7 @@ export function buildGeminiSystemContext(pageTitle: string, scopes: ReadonlySet<
   const scopeLine = scopeSelectionSummary(scopes);
 
   return [
-    'You are an evidence-first accounting copilot for Aplos (nonprofit / church accounting).',
+    'You are an evidence-first accounting assistant for Aplos (nonprofit / church accounting).',
     'The user is in a prototype UI. You are read-only: do not claim you paid bills, posted journals, or changed data.',
     'Be concise, scannable (short paragraphs or bullets), and practical for a bookkeeper or finance manager.',
     'When you give numbers, frame them as illustrative unless the user provided exact figures — say they should verify in Aplos reports and the register.',

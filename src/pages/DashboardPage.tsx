@@ -251,10 +251,10 @@ export function DashboardPage({ onNavigate, onOpenReportsFiltered }: DashboardPa
 
         <div className="rounded-xl border border-neutral-border bg-neutral-bg-weak p-4">
           <h3 className="text-neutral-text font-vl-semibold tracking-aplos" style={{ fontSize: '14px' }}>
-            Accounting copilot
+            Accounting assistant
           </h3>
           <p className="text-neutral-text-weak tracking-aplos mt-2" style={{ fontSize: '12px', lineHeight: 1.45 }}>
-            Evidence-first answers with cited reports and screens. Open <span className="text-neutral-text font-vl-medium">Copilot</span> from the header — proactive insight cards are off in this prototype.
+            Evidence-first answers with cited reports and screens. Open <span className="text-neutral-text font-vl-medium">Assistant</span> from the header — proactive insight cards are off in this prototype.
           </p>
         </div>
 

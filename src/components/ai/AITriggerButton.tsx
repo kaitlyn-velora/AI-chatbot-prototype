@@ -17,7 +17,7 @@ export function AITriggerButton({ isOpen, onClick }: AITriggerButtonProps) {
       ) : (
         <Sparkles className="w-icon h-icon" strokeWidth={2} />
       )}
-      {isOpen ? 'Close' : 'Copilot'}
+      {isOpen ? 'Close' : 'Assistant'}
     </button>
   );
 }

@@ -68,7 +68,7 @@ export const accountantDemoStarter: AIStarterConfig = {
                           label: 'Open Comparative Income Statement',
                           answer:
                             'Opening **Comparative Income Statement** — March vs prior period.\n\n' +
-                            '**Demo complete.** Close Copilot and reopen to restart.',
+                            '**Demo complete.** Close the assistant and reopen to restart.',
                           source: 'Reports',
                           openReports: {
                             search: 'comparative income',

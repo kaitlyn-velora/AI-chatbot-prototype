@@ -202,7 +202,7 @@ const contactsStarters: AIStarterConfig[] = [
     source: 'Vendor summary',
   },
   {
-    label: 'Should donor contacts live in this copilot?',
+    label: 'Should donor contacts live in this assistant?',
     answer:
       'Stewardship / donor CRM lives in sibling products. Here, focus on AP/AR-facing contacts that hit the ledger.',
     source: 'Scope',

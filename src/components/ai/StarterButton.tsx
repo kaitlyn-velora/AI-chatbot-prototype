@@ -2,7 +2,7 @@ interface StarterButtonProps {
   label: string;
   onClick: () => void;
   /**
-   * `list` — full-width row, Copilot-style scan (default in panel).
+   * `list` — full-width row, panel list scan (default in assistant panel).
    * `neutral` — compact pill. `primary` — CTA.
    */
   variant?: 'primary' | 'neutral' | 'list';

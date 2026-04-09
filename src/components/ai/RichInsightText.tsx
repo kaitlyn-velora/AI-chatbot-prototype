@@ -80,9 +80,9 @@ function MarkdownHeading({ level, content }: { level: number; content: string })
 }
 
 /**
- * Copilot / model answers: `**bold**` plus markdown ATX headings (`#` … `######`) on their own lines.
+ * Assistant / model answers: `**bold**` plus markdown ATX headings (`#` … `######`) on their own lines.
  */
-export function CopilotAnswerText({ text }: { text: string }) {
+export function AssistantAnswerText({ text }: { text: string }) {
   const blocks = splitAnswerIntoBlocks(text);
   if (blocks.length === 0) {
     return null;

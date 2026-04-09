@@ -243,7 +243,7 @@ export const marketingAI: AIPageConfig = {
   starters: [
     {
       label: 'What can I do here?',
-      answer: 'This copilot focuses on accounting surfaces. Use the sidebar to explore Dashboard, AP, Reports, or Fund Accounting.',
+      answer: 'This assistant focuses on accounting surfaces. Use the sidebar to explore Dashboard, AP, Reports, or Fund Accounting.',
       source: 'Scope',
     },
   ],

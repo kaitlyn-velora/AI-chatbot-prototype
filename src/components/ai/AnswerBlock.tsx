@@ -1,4 +1,4 @@
-import { CopilotAnswerText, RichInsightText } from './RichInsightText';
+import { AssistantAnswerText, RichInsightText } from './RichInsightText';
 
 interface FollowUp {
   label: string;
@@ -26,7 +26,7 @@ export function AnswerBlock({ question, answer, source, followUps }: AnswerBlock
 
       <div className="pl-0 sm:pl-1">
         <div className="text-neutral-text tracking-aplos">
-          <CopilotAnswerText text={answer} />
+          <AssistantAnswerText text={answer} />
         </div>
         {source && (
           <p
