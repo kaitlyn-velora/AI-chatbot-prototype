@@ -2,7 +2,7 @@ import { scopeSelectionSummary, type AccountingScopeId } from '../data/accountin
 
 export type GeminiChatTurn = { role: 'user' | 'model'; text: string };
 
-/** True when the dev server exposes Gemini (GEMINI_API_KEY set). */
+/** True when Gemini is available (Vite dev middleware or Vercel `/api/gemini/status` with GEMINI_API_KEY set). */
 export async function fetchGeminiStatus(): Promise<boolean> {
   try {
     const res = await fetch('/api/gemini/status');
