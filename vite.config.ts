@@ -20,6 +20,18 @@ function readJsonBody(req: IncomingMessage): Promise<unknown> {
 
 type GeminiContent = { role: string; parts: { text: string }[] };
 
+function normalizeGeminiApiKey(raw: string | undefined): string | undefined {
+  if (raw === undefined || raw === "") return undefined;
+  let k = String(raw).trim();
+  if (
+    (k.startsWith('"') && k.endsWith('"')) ||
+    (k.startsWith("'") && k.endsWith("'"))
+  ) {
+    k = k.slice(1, -1).trim();
+  }
+  return k.length > 0 ? k : undefined;
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
 
@@ -33,15 +45,19 @@ export default defineConfig(({ mode }) => {
             const path = req.url?.split("?")[0] ?? "";
 
             if (req.method === "GET" && path === "/api/gemini/status") {
-              const key = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+              const key = normalizeGeminiApiKey(
+                env.GEMINI_API_KEY || process.env.GEMINI_API_KEY
+              );
               res.setHeader("Content-Type", "application/json");
-              res.end(JSON.stringify({ enabled: Boolean(key && String(key).trim()) }));
+              res.end(JSON.stringify({ enabled: Boolean(key) }));
               return;
             }
 
             if (req.method === "POST" && path === "/api/gemini/chat") {
-              const key = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-              if (!key || !String(key).trim()) {
+              const key = normalizeGeminiApiKey(
+                env.GEMINI_API_KEY || process.env.GEMINI_API_KEY
+              );
+              if (!key) {
                 res.statusCode = 503;
                 res.setHeader("Content-Type", "application/json");
                 res.end(
@@ -84,7 +100,7 @@ export default defineConfig(({ mode }) => {
                   env.GEMINI_MODEL ||
                   process.env.GEMINI_MODEL ||
                   "gemini-3-flash-preview";
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(String(key).trim())}`;
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
 
                 const payload: Record<string, unknown> = {
                   contents,

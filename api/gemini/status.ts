@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { readGeminiApiKey } from "./_readKey";
 
 export default function handler(req: VercelRequest, res: VercelResponse): void {
   if (req.method !== "GET") {
@@ -6,6 +7,6 @@ export default function handler(req: VercelRequest, res: VercelResponse): void {
     return;
   }
 
-  const key = process.env.GEMINI_API_KEY;
-  res.status(200).json({ enabled: Boolean(key && String(key).trim()) });
+  const key = readGeminiApiKey();
+  res.status(200).json({ enabled: Boolean(key) });
 }

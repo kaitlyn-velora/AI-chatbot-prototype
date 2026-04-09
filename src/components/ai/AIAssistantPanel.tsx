@@ -273,7 +273,7 @@ export function AIAssistantPanel({
           {
             question: q,
             answer:
-              `**Couldn’t get a live answer**\n\n${msg}\n\n**Local:** add \`GEMINI_API_KEY\` to **.env.local**, restart \`npm run dev\`.\n\n**Vercel:** Project → Settings → Environment Variables → \`GEMINI_API_KEY\`, then redeploy. Confirm the Generative Language API is enabled for your key.`,
+              `**Couldn’t get a live answer**\n\n${msg}\n\n**If it says the API key expired:** create a new key at https://aistudio.google.com/apikey , replace \`GEMINI_API_KEY\` in Vercel and in \`.env.local\`, then **redeploy** on Vercel (deployments keep the old key until you redeploy).\n\n**Local:** \`.env.local\` + restart \`npm run dev\`.\n\n**Vercel:** Environment Variables → \`GEMINI_API_KEY\` for **Production** (and Preview if you use preview URLs), save, then **Redeploy**.`,
             source: 'Gemini error',
           },
         ]);

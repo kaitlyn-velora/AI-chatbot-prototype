@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { readGeminiApiKey } from "./_readKey";
 
 type GeminiContent = { role: string; parts: { text: string }[] };
 
@@ -8,8 +9,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return;
   }
 
-  const key = process.env.GEMINI_API_KEY;
-  if (!key || !String(key).trim()) {
+  const key = readGeminiApiKey();
+  if (!key) {
     res.status(503).json({
       error:
         "GEMINI_API_KEY is not set. Add it under Project → Settings → Environment Variables on Vercel, then redeploy.",
@@ -41,7 +42,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   contents.push({ role: "user", parts: [{ text: message }] });
 
   const model = process.env.GEMINI_MODEL || "gemini-3-flash-preview";
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(String(key).trim())}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
 
   const payload: Record<string, unknown> = {
     contents,
