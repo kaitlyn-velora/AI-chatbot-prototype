@@ -1,20 +1,7 @@
-import { useState, useCallback } from 'react';
-import { ComponentShowcase } from './pages/ComponentShowcase';
+import { useState, useCallback, lazy, Suspense } from 'react';
+import type { LazyExoticComponent, ComponentType } from 'react';
 import { AppLayout } from './components/AppLayout';
 import type { PageId } from './pageIds';
-import { DashboardPage } from './pages/DashboardPage';
-import { RegisterPage } from './pages/register/RegisterPage';
-import { BillsListPage } from './pages/ap/BillsListPage';
-import { NewBillPage } from './pages/ap/NewBillPage';
-import { BillDetailPage } from './pages/ap/BillDetailPage';
-import { BillsToPayPage } from './pages/ap/BillsToPayPage';
-import { MyApprovalsPage } from './pages/ap/MyApprovalsPage';
-import { ReportingPage } from './pages/reporting/ReportingPage';
-import { ReportRunPage } from './pages/reporting/ReportRunPage';
-import { FundAccountingPage } from './pages/funds/FundAccountingPage';
-import { ContactsPage } from './pages/contacts/ContactsPage';
-import { DonationsPage } from './pages/DonationsPage';
-import { MarketingPage } from './pages/MarketingPage';
 import {
   dashboardAI,
   registerAI,
@@ -34,8 +21,61 @@ import type { ReportsListFilter } from './types/reportsNavigation';
 import type { InsightHandoffContext } from './types/insightHandoff';
 import { reportRunTitle } from './data/reportRunRegistry';
 
-function ReportRunPlaceholder() {
-  return <span className="hidden" aria-hidden />;
+const LazyComponentShowcase = lazy(() =>
+  import('./pages/ComponentShowcase').then((m) => ({ default: m.ComponentShowcase }))
+);
+const LazyDashboardPage = lazy(() =>
+  import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage }))
+);
+const LazyRegisterPage = lazy(() =>
+  import('./pages/register/RegisterPage').then((m) => ({ default: m.RegisterPage }))
+);
+const LazyBillsListPage = lazy(() =>
+  import('./pages/ap/BillsListPage').then((m) => ({ default: m.BillsListPage }))
+);
+const LazyNewBillPage = lazy(() =>
+  import('./pages/ap/NewBillPage').then((m) => ({ default: m.NewBillPage }))
+);
+const LazyBillDetailPage = lazy(() =>
+  import('./pages/ap/BillDetailPage').then((m) => ({ default: m.BillDetailPage }))
+);
+const LazyBillsToPayPage = lazy(() =>
+  import('./pages/ap/BillsToPayPage').then((m) => ({ default: m.BillsToPayPage }))
+);
+const LazyMyApprovalsPage = lazy(() =>
+  import('./pages/ap/MyApprovalsPage').then((m) => ({ default: m.MyApprovalsPage }))
+);
+const LazyReportingPage = lazy(() =>
+  import('./pages/reporting/ReportingPage').then((m) => ({ default: m.ReportingPage }))
+);
+const LazyReportRunPage = lazy(() =>
+  import('./pages/reporting/ReportRunPage').then((m) => ({ default: m.ReportRunPage }))
+);
+const LazyFundAccountingPage = lazy(() =>
+  import('./pages/funds/FundAccountingPage').then((m) => ({ default: m.FundAccountingPage }))
+);
+const LazyContactsPage = lazy(() =>
+  import('./pages/contacts/ContactsPage').then((m) => ({ default: m.ContactsPage }))
+);
+const LazyDonationsPage = lazy(() =>
+  import('./pages/DonationsPage').then((m) => ({ default: m.DonationsPage }))
+);
+const LazyMarketingPage = lazy(() =>
+  import('./pages/MarketingPage').then((m) => ({ default: m.MarketingPage }))
+);
+
+/** Lazy routes have different prop shapes; `report-run` is never rendered as `<PageComponent />`. */
+type LazyPage = LazyExoticComponent<ComponentType<Record<string, unknown>>>;
+
+function RouteFallback() {
+  return (
+    <div
+      className="flex min-h-[200px] items-center justify-center text-vl-1 text-neutral-600"
+      style={{ fontFamily: 'var(--vl-font-sans)' }}
+    >
+      Loading…
+    </div>
+  );
 }
 
 function workAreaLabel(page: PageId): string {
@@ -68,25 +108,25 @@ function workAreaLabel(page: PageId): string {
 
 const pageConfig: Record<
   Exclude<PageId, 'components'>,
-  { breadcrumb: string; ai: AIPageConfig; component: () => JSX.Element }
+  { breadcrumb: string; ai: AIPageConfig; component: LazyPage }
 > = {
-  dashboard: { breadcrumb: 'Dashboard', ai: dashboardAI, component: DashboardPage },
-  register: {
-    breadcrumb: 'Transactions',
-    ai: registerAI,
-    component: () => <RegisterPage />,
+  dashboard: { breadcrumb: 'Dashboard', ai: dashboardAI, component: LazyDashboardPage },
+  register: { breadcrumb: 'Transactions', ai: registerAI, component: LazyRegisterPage },
+  'bills-list': { breadcrumb: 'Accounts Payable', ai: billsListAI, component: LazyBillsListPage },
+  'new-bill': { breadcrumb: 'Accounts Payable', ai: newBillAI, component: LazyNewBillPage },
+  'bill-detail': { breadcrumb: 'Accounts Payable', ai: billDetailAI, component: LazyBillDetailPage },
+  'bills-to-pay': { breadcrumb: 'Accounts Payable', ai: billsToPayAI, component: LazyBillsToPayPage },
+  'my-approvals': { breadcrumb: 'Accounts Payable', ai: myApprovalsAI, component: LazyMyApprovalsPage },
+  reporting: { breadcrumb: 'Reports', ai: reportingAI, component: LazyReportingPage },
+  'report-run': {
+    breadcrumb: 'Reports',
+    ai: reportingAI,
+    component: LazyReportRunPage as unknown as LazyPage,
   },
-  'bills-list': { breadcrumb: 'Accounts Payable', ai: billsListAI, component: BillsListPage },
-  'new-bill': { breadcrumb: 'Accounts Payable', ai: newBillAI, component: NewBillPage },
-  'bill-detail': { breadcrumb: 'Accounts Payable', ai: billDetailAI, component: BillDetailPage },
-  'bills-to-pay': { breadcrumb: 'Accounts Payable', ai: billsToPayAI, component: BillsToPayPage },
-  'my-approvals': { breadcrumb: 'Accounts Payable', ai: myApprovalsAI, component: MyApprovalsPage },
-  reporting: { breadcrumb: 'Reports', ai: reportingAI, component: ReportingPage },
-  'report-run': { breadcrumb: 'Reports', ai: reportingAI, component: ReportRunPlaceholder },
-  'fund-accounting': { breadcrumb: 'Account List', ai: fundAccountingAI, component: FundAccountingPage },
-  contacts: { breadcrumb: 'People & Groups', ai: contactsAI, component: ContactsPage },
-  donations: { breadcrumb: 'Donations', ai: donationsAI, component: DonationsPage },
-  marketing: { breadcrumb: 'Marketing', ai: marketingAI, component: MarketingPage },
+  'fund-accounting': { breadcrumb: 'Account List', ai: fundAccountingAI, component: LazyFundAccountingPage },
+  contacts: { breadcrumb: 'People & Groups', ai: contactsAI, component: LazyContactsPage },
+  donations: { breadcrumb: 'Donations', ai: donationsAI, component: LazyDonationsPage },
+  marketing: { breadcrumb: 'Marketing', ai: marketingAI, component: LazyMarketingPage },
 };
 
 export default function App() {
@@ -168,7 +208,9 @@ export default function App() {
         >
           ← Back to Prototype
         </button>
-        <ComponentShowcase />
+        <Suspense fallback={<RouteFallback />}>
+          <LazyComponentShowcase />
+        </Suspense>
       </div>
     );
   }
@@ -188,27 +230,29 @@ export default function App() {
       onNavigate={handleNavigate}
       onOpenReportsFiltered={openReportsFiltered}
     >
-      {currentPage === 'report-run' ? (
-        <ReportRunPage
-          reportId={activeRunReportId ?? 'comparative-income-statement'}
-          onBack={() => {
-            setActiveRunReportId(null);
-            handleNavigate('reporting');
-          }}
-        />
-      ) : currentPage === 'reporting' ? (
-        <ReportingPage
-          appliedFilter={reportsFilter}
-          onFilterConsumed={consumeReportsFilter}
-          onRunReport={openReportRun}
-        />
-      ) : currentPage === 'dashboard' ? (
-        <DashboardPage onNavigate={handleNavigate} onOpenReportsFiltered={openReportsFiltered} />
-      ) : currentPage === 'register' ? (
-        <RegisterPage onNavigate={handleNavigate} />
-      ) : (
-        <PageComponent />
-      )}
+      <Suspense fallback={<RouteFallback />}>
+        {currentPage === 'report-run' ? (
+          <LazyReportRunPage
+            reportId={activeRunReportId ?? 'comparative-income-statement'}
+            onBack={() => {
+              setActiveRunReportId(null);
+              handleNavigate('reporting');
+            }}
+          />
+        ) : currentPage === 'reporting' ? (
+          <LazyReportingPage
+            appliedFilter={reportsFilter}
+            onFilterConsumed={consumeReportsFilter}
+            onRunReport={openReportRun}
+          />
+        ) : currentPage === 'dashboard' ? (
+          <LazyDashboardPage onNavigate={handleNavigate} onOpenReportsFiltered={openReportsFiltered} />
+        ) : currentPage === 'register' ? (
+          <LazyRegisterPage onNavigate={handleNavigate} />
+        ) : (
+          <PageComponent />
+        )}
+      </Suspense>
     </AppLayout>
   );
 }

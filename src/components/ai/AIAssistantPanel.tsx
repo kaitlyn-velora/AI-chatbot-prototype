@@ -1,15 +1,26 @@
-import { useState, useCallback, useEffect, useMemo, useRef, type Dispatch, type SetStateAction } from 'react';
-import { Sparkles, Send, Info } from 'lucide-react';
+import { useState, useCallback, useEffect, useMemo, useRef, type ChangeEvent, type Dispatch, type SetStateAction } from 'react';
+import { Sparkles, Send, X, Plus, Maximize2, Minimize2, ChevronDown, Check } from 'lucide-react';
 import type { InsightData } from './InsightCard';
 import { StarterButton } from './StarterButton';
 import { AnswerBlock } from './AnswerBlock';
-import { Input } from '../Input';
 import type { ReportsListFilter } from '../../types/reportsNavigation';
 import type { AppOpenReportsFn } from '../../types/insightHandoff';
 import { matchAccountantDemoQuestion } from '../../data/accountantDemoScenario';
+import {
+  ACCOUNTING_SCOPES,
+  getStartersForScopes,
+  scopeSelectionSummary,
+  toggleAccountingScope,
+  type AccountingScopeId,
+} from '../../data/accountingScopeStarters';
+import {
+  buildGeminiSystemContext,
+  fetchGeminiStatus,
+  sendGeminiMessage,
+  type GeminiChatTurn,
+} from '../../services/geminiChat';
 
-/** UI shows at most this many starter chips; extra entries in config are ignored. */
-export const MAX_SUGGESTED_QUESTIONS = 4;
+export const MAX_SUGGESTED_QUESTIONS = 5;
 
 export type { ReportsListFilter };
 
@@ -17,9 +28,7 @@ export interface AIFollowUpConfig {
   label: string;
   answer: string;
   source?: string;
-  /** Navigates to Reports and applies search + category tab. */
   openReports?: ReportsListFilter;
-  /** Deeper steps for scripted demos or multi-turn flows. */
   followUps?: AIFollowUpConfig[];
 }
 
@@ -33,7 +42,6 @@ export interface AIStarterConfig {
 export interface AIPageConfig {
   pageTitle: string;
   insights: InsightData[];
-  /** Only the first `MAX_SUGGESTED_QUESTIONS` entries appear in the panel. */
   starters: AIStarterConfig[];
 }
 
@@ -52,10 +60,9 @@ export interface ConversationEntry {
   followUps?: AIFollowUpConfig[];
 }
 
-const READ_ONLY_TOOLTIP_COPY =
-  'Evidence-first accounting copilot: answers should tie back to Aplos screens and reports you can verify. This prototype is read-only—it does not record payments, approvals, or other writes; those stay in core Aplos workflows.';
+const iconBtn =
+  'rounded-md p-1.5 text-neutral-text-weak transition-colors hover:bg-neutral-bg-weak hover:text-neutral-text focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300';
 
-/** Prototype heuristic: steer “do this in Aplos” questions toward read-only behavior. */
 function readOnlyDeflectionIfWriteLike(question: string): string | null {
   const q = question.toLowerCase();
   const writeLike =
@@ -77,9 +84,91 @@ function readOnlyDeflectionIfWriteLike(question: string): string | null {
   if (!writeLike) return null;
 
   return (
-    'This assistant is read-only: it cannot pay bills, approve transactions, post entries, or change anything in Aplos.\n\n' +
-    'I can still summarize what’s in your data, explain balances and reports, and open the right page so you can take action yourself. ' +
-    'Try a question like “What’s overdue?” or use the suggestions above.'
+    "Read-only \u2014 I can\u2019t pay, approve, or post anything.\n\n" +
+    'I can summarize data, explain balances, and open the right page. Try a suggestion below.'
+  );
+}
+
+function ScopeMultiselect({
+  selected,
+  onToggle,
+}: {
+  selected: ReadonlySet<AccountingScopeId>;
+  onToggle: (id: AccountingScopeId) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const summary = scopeSelectionSummary(selected);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const isChecked = (id: AccountingScopeId) => {
+    if (id === 'all') {
+      return selected.size === 0 || (selected.size === 1 && selected.has('all'));
+    }
+    return selected.has(id) && !selected.has('all');
+  };
+
+  return (
+    <div className="relative w-full" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-label={`Scope: ${summary}. Open to change.`}
+        className="flex w-full items-center gap-1.5 rounded-lg border border-neutral-border bg-neutral-bg px-3 py-2 tracking-aplos text-neutral-text transition-colors hover:border-neutral-border-strong hover:bg-neutral-bg-weak"
+        style={{ fontSize: '12px', lineHeight: 1.4 }}
+      >
+        <Sparkles className="shrink-0 text-primary-700" strokeWidth={2} style={{ width: '14px', height: '14px' }} />
+        <span className="min-w-0 flex-1 truncate text-left">{summary}</span>
+        <ChevronDown
+          className={`shrink-0 text-neutral-text-weak transition-transform ${open ? 'rotate-180' : ''}`}
+          strokeWidth={2}
+          style={{ width: '14px', height: '14px' }}
+        />
+      </button>
+      {open && (
+        <div
+          className="absolute bottom-full left-0 z-50 mb-1.5 w-full rounded-lg border border-neutral-border bg-neutral-bg py-1 shadow-md"
+          role="listbox"
+          aria-label="Accounting scope"
+          aria-multiselectable="true"
+        >
+          {ACCOUNTING_SCOPES.map((s) => {
+            const checked = isChecked(s.id);
+            return (
+              <button
+                key={s.id}
+                type="button"
+                role="option"
+                aria-selected={checked}
+                onClick={() => onToggle(s.id)}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left tracking-aplos text-neutral-text transition-colors hover:bg-primary-bg-default"
+                style={{ fontSize: '13px', lineHeight: 1.4 }}
+              >
+                <span
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                    checked ? 'border-primary-700 bg-primary-700 text-neutral-bg' : 'border-neutral-border-strong bg-neutral-bg'
+                  }`}
+                  aria-hidden
+                >
+                  {checked && <Check strokeWidth={3} style={{ width: '10px', height: '10px' }} />}
+                </span>
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -92,12 +181,41 @@ export function AIAssistantPanel({
 }: AIAssistantPanelProps) {
   const [isTyping, setIsTyping] = useState(false);
   const [inputValue, setInputValue] = useState('');
+  const [accountingScopes, setAccountingScopes] = useState<Set<AccountingScopeId>>(
+    () => new Set<AccountingScopeId>(['all'])
+  );
+  const [panelWide, setPanelWide] = useState(false);
+  const [geminiEnabled, setGeminiEnabled] = useState(false);
   const scrollEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const conversationRef = useRef(conversation);
+  conversationRef.current = conversation;
 
   const visibleStarters = useMemo(
-    () => config.starters.slice(0, MAX_SUGGESTED_QUESTIONS),
-    [config.starters]
+    () => getStartersForScopes(accountingScopes, MAX_SUGGESTED_QUESTIONS),
+    [accountingScopes]
   );
+
+  const handleTextareaChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
+    setInputValue(e.target.value);
+    const el = e.target;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+  }, []);
+
+  const handleScopeToggle = useCallback((id: AccountingScopeId) => {
+    setAccountingScopes((prev) => toggleAccountingScope(prev, id));
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchGeminiStatus().then((on) => {
+      if (!cancelled) setGeminiEnabled(on);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -117,7 +235,7 @@ export function AIAssistantPanel({
       setTimeout(() => {
         setConversation((prev) => [...prev, { question, answer, source, followUps }]);
         setIsTyping(false);
-      }, 800 + Math.random() * 600);
+      }, 600 + Math.random() * 400);
     },
     [setConversation]
   );
@@ -139,10 +257,46 @@ export function AIAssistantPanel({
     [simulateAnswer, onOpenReportsFiltered]
   );
 
+  const submitWithGemini = useCallback(
+    async (q: string, scopes: Set<AccountingScopeId>) => {
+      setIsTyping(true);
+      try {
+        const history: GeminiChatTurn[] = [];
+        for (const e of conversationRef.current) {
+          history.push({ role: 'user', text: e.question });
+          history.push({ role: 'model', text: e.answer });
+        }
+        const systemContext = buildGeminiSystemContext(config.pageTitle, scopes);
+        const text = await sendGeminiMessage({
+          systemContext,
+          history,
+          message: q,
+        });
+        setConversation((prev) => [...prev, { question: q, answer: text, source: 'Gemini' }]);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setConversation((prev) => [
+          ...prev,
+          {
+            question: q,
+            answer:
+              `**Couldn’t get a live answer**\n\n${msg}\n\nAdd \`GEMINI_API_KEY\` to **.env.local** (see **.env.example**), restart \`npm run dev\`, and confirm the Gemini API is enabled for your Google Cloud project.`,
+            source: 'Gemini error',
+          },
+        ]);
+      } finally {
+        setIsTyping(false);
+      }
+    },
+    [config.pageTitle, setConversation]
+  );
+
   const handleSubmit = useCallback(() => {
     if (!inputValue.trim()) return;
     const q = inputValue.trim();
     setInputValue('');
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
+    const scopesSnapshot = new Set(accountingScopes);
     const demoTurn = matchAccountantDemoQuestion(q);
     if (demoTurn) {
       if (demoTurn.openReports && onOpenReportsFiltered) {
@@ -156,128 +310,154 @@ export function AIAssistantPanel({
       simulateAnswer(q, deflection, 'Read-only mode');
       return;
     }
+    if (geminiEnabled) {
+      void submitWithGemini(q, scopesSnapshot);
+      return;
+    }
     simulateAnswer(
       q,
-      `I can answer from your Aplos data in read-only mode—I summarize and explain what’s already there, but I can’t create, pay, approve, or edit anything for you.\n\nFor “${q}”, here’s a high-level read of what I see in your accounts and recent activity. Use **Evidence** lines below answers to tie out in Aplos; use suggested questions and follow-ups to open the right report or screen.`,
-      'Prototype summary (verify in Aplos)'
+      `Here's what I see for "${q}" — verify figures against your live reports and use **Evidence** links to tie out.`,
+      'Prototype (verify in Aplos)'
     );
-  }, [inputValue, simulateAnswer, onOpenReportsFiltered]);
+  }, [
+    inputValue,
+    accountingScopes,
+    geminiEnabled,
+    simulateAnswer,
+    submitWithGemini,
+    onOpenReportsFiltered,
+  ]);
+
+  const clearConversation = useCallback(() => {
+    setConversation([]);
+  }, [setConversation]);
 
   return (
     <div
-      className="flex min-h-0 w-[320px] min-w-[320px] shrink-0 flex-col self-stretch border-l border-neutral-border bg-neutral-bg-weak animate-slide-in-right pb-[var(--vl-spacing-96)]"
-      aria-label="Accounting copilot, evidence-first, read-only"
+      className={`flex min-h-0 shrink-0 flex-col self-stretch border-l border-neutral-border bg-neutral-bg transition-[width,min-width] duration-200 ${
+        panelWide ? 'w-[min(32rem,calc(100vw-2rem))] min-w-[300px]' : 'w-[360px] min-w-[360px]'
+      }`}
+      aria-label="Accounting copilot"
     >
-      <div className="flex shrink-0 items-center gap-2 flex-wrap border-b border-neutral-border px-4 py-3">
-        <Sparkles className="text-primary-700 shrink-0" strokeWidth={2} style={{ width: '16px', height: '16px' }} />
-        <div className="min-w-0 flex flex-col gap-0.5">
-          <span className="text-neutral-text font-vl-semibold tracking-aplos leading-tight" style={{ fontSize: '14px' }}>
-            Accounting copilot
-          </span>
-          <span className="text-neutral-text-weak tracking-aplos" style={{ fontSize: '11px', lineHeight: 1.35 }}>
-            Evidence-first · read-only
+      {/* Header */}
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-neutral-border px-4 py-2.5">
+        <div className="min-w-0 flex items-center gap-2">
+          <Sparkles className="shrink-0 text-primary-700" strokeWidth={1.75} style={{ width: '20px', height: '20px' }} />
+          <h2 className="text-neutral-text font-vl-semibold tracking-aplos" style={{ fontSize: '15px' }}>
+            Copilot
+          </h2>
+          {geminiEnabled && (
+            <span
+              className="rounded-full border border-primary-700 bg-primary-bg-default px-2 py-0.5 text-primary-700 font-vl-medium tracking-aplos"
+              style={{ fontSize: '10px', lineHeight: 1.3 }}
+              title="Live answers via Gemini (dev server only)"
+            >
+              Live AI
+            </span>
+          )}
+          <span className="text-neutral-text-weak tracking-aplos" style={{ fontSize: '12px' }}>
+            · {config.pageTitle}
           </span>
         </div>
-        <div className="group relative inline-flex shrink-0">
+        <div className="flex shrink-0 items-center gap-0.5">
+          <button type="button" onClick={clearConversation} className={iconBtn} aria-label="New conversation" title="New chat">
+            <Plus strokeWidth={2} style={{ width: '17px', height: '17px' }} />
+          </button>
           <button
             type="button"
-            className="rounded-full p-0.5 text-primary-700 hover:bg-neutral-bg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
-            aria-label="How evidence-first read-only mode works"
-            aria-describedby="ai-panel-readonly-tooltip"
+            onClick={() => setPanelWide((w) => !w)}
+            className={iconBtn}
+            aria-label={panelWide ? 'Narrow' : 'Wider'}
+            title={panelWide ? 'Narrow' : 'Wider'}
           >
-            <Info strokeWidth={2} style={{ width: '15px', height: '15px' }} aria-hidden />
+            {panelWide ? (
+              <Minimize2 strokeWidth={2} style={{ width: '17px', height: '17px' }} />
+            ) : (
+              <Maximize2 strokeWidth={2} style={{ width: '17px', height: '17px' }} />
+            )}
           </button>
-          <div
-            id="ai-panel-readonly-tooltip"
-            role="tooltip"
-            className="pointer-events-none absolute left-0 top-full z-50 mt-1.5 max-w-[260px] rounded-lg border px-3 py-2 text-nav-icon-strong tracking-aplos shadow-md opacity-0 invisible transition-opacity duration-150 group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible"
-            style={{
-              backgroundColor: 'var(--vl-color-tooltip-bg-default)',
-              borderColor: 'var(--vl-color-tooltip-border-default)',
-              fontSize: '12px',
-              lineHeight: 1.45,
-            }}
-          >
-            {READ_ONLY_TOOLTIP_COPY}
-          </div>
+          <button type="button" onClick={onClose} className={iconBtn} aria-label="Close">
+            <X strokeWidth={2} style={{ width: '17px', height: '17px' }} />
+          </button>
+        </div>
+      </header>
+
+      {/* Thread */}
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+        <div className="mx-auto max-w-[40rem] space-y-6">
+          {conversation.map((entry, i) => (
+            <AnswerBlock
+              key={i}
+              question={entry.question}
+              answer={entry.answer}
+              source={entry.source}
+              followUps={entry.followUps?.map((fu) => ({
+                label: fu.label,
+                onClick: () => handleFollowUp(fu),
+              }))}
+            />
+          ))}
+
+          {isTyping && (
+            <div className="flex items-center gap-2.5 text-neutral-text-weak" role="status" aria-live="polite">
+              <span className="flex gap-1" aria-hidden>
+                <span className="h-1.5 w-1.5 rounded-full bg-neutral-text-weak/70 animate-pulse" />
+                <span className="h-1.5 w-1.5 rounded-full bg-neutral-text-weak/70 animate-pulse" style={{ animationDelay: '0.15s' }} />
+                <span className="h-1.5 w-1.5 rounded-full bg-neutral-text-weak/70 animate-pulse" style={{ animationDelay: '0.3s' }} />
+              </span>
+              <span className="tracking-aplos" style={{ fontSize: '12px' }}>Working…</span>
+            </div>
+          )}
+
+          <div ref={scrollEndRef} aria-hidden className="h-px w-full shrink-0" />
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
-        {visibleStarters.length > 0 && conversation.length === 0 && !isTyping && (
-          <div className="space-y-2">
-            <div>
-              <p
-                className="text-neutral-text font-vl-medium tracking-aplos"
-                style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}
-              >
-                Suggested for you
-              </p>
-              <p className="text-neutral-text-weak tracking-aplos mt-0.5" style={{ fontSize: '11px', lineHeight: 1.35 }}>
-                Grounded in this accounting screen; every answer should cite evidence you can open in Aplos
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
+      {/* Compose */}
+      <footer className="shrink-0 border-t border-neutral-border bg-neutral-bg px-4 pb-4 pt-3">
+        <div className="mx-auto max-w-[40rem] space-y-2.5">
+          {!isTyping && visibleStarters.length > 0 && (
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Sample questions">
               {visibleStarters.map((starter, i) => (
-                <StarterButton key={i} label={starter.label} onClick={() => handleStarterClick(starter)} />
+                <StarterButton
+                  key={`${starter.label}-${i}`}
+                  label={starter.label}
+                  variant="neutral"
+                  onClick={() => handleStarterClick(starter)}
+                />
               ))}
             </div>
+          )}
+
+          <ScopeMultiselect selected={accountingScopes} onToggle={handleScopeToggle} />
+
+          <div className="flex items-end gap-2">
+            <textarea
+              value={inputValue}
+              onChange={handleTextareaChange}
+              placeholder="Ask anything…"
+              rows={3}
+              className="min-h-[80px] max-h-[160px] w-full min-w-0 flex-1 resize-none rounded-lg border border-neutral-border bg-neutral-bg px-4 py-3 text-vl-1 leading-vl-base text-neutral-text placeholder:text-neutral-text-weak tracking-aplos focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit();
+                }
+              }}
+              aria-label="Ask copilot"
+              ref={textareaRef}
+            />
+            <button
+              type="button"
+              onClick={handleSubmit}
+              className="mb-1 flex h-btn w-9 shrink-0 items-center justify-center rounded-button bg-btn-primary text-btn-primary-text transition-colors hover:bg-btn-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-300"
+              aria-label="Send"
+            >
+              <Send strokeWidth={2} style={{ width: '16px', height: '16px' }} />
+            </button>
           </div>
-        )}
-
-        {conversation.map((entry, i) => (
-          <AnswerBlock
-            key={i}
-            question={entry.question}
-            answer={entry.answer}
-            source={entry.source}
-            followUps={entry.followUps?.map((fu) => ({
-              label: fu.label,
-              onClick: () => handleFollowUp(fu),
-            }))}
-          />
-        ))}
-
-        {isTyping && (
-          <div className="flex items-center gap-2 px-1">
-            <div className="flex gap-1">
-              <span className="w-2 h-2 rounded-full bg-primary-700 animate-pulse" />
-              <span className="w-2 h-2 rounded-full bg-primary-700 animate-pulse" style={{ animationDelay: '0.2s' }} />
-              <span className="w-2 h-2 rounded-full bg-primary-700 animate-pulse" style={{ animationDelay: '0.4s' }} />
-            </div>
-            <span className="text-neutral-text-weak tracking-aplos" style={{ fontSize: '12px' }}>
-              Gathering evidence…
-            </span>
-          </div>
-        )}
-
-        <div ref={scrollEndRef} aria-hidden className="h-px w-full shrink-0" />
-      </div>
-
-      <div className="shrink-0 border-t border-neutral-border bg-neutral-bg-weak px-4 py-3">
-        <div className="flex gap-2">
-          <Input
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Ask with evidence in mind (read-only)…"
-            onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-          />
-          <button
-            type="button"
-            onClick={handleSubmit}
-            className="bg-btn-primary text-btn-primary-text rounded-button px-3 shrink-0 transition-colors hover:bg-btn-primary-hover"
-          >
-            <Send strokeWidth={2} style={{ width: '16px', height: '16px' }} />
-          </button>
         </div>
-        <p
-          role="note"
-          className="text-neutral-text-weak tracking-aplos mt-2"
-          style={{ fontSize: '10px', lineHeight: 1.45 }}
-        >
-          Evidence-first: tie material figures to Aplos reports and transactions. Read-only — nothing here posts to your ledger.
-        </p>
-      </div>
+      </footer>
     </div>
   );
 }

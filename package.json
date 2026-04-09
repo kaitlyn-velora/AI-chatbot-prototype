@@ -4,6 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "build:theming": "node velora-theming-main/src/scripts/build-themes.mjs && node velora-theming-main/src/scripts/build-tailwind-theme.mjs && node velora-theming-main/src/scripts/build-dist.mjs",
+    "postinstall": "npm run build:theming",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview"

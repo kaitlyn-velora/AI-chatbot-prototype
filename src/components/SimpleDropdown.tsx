@@ -12,6 +12,10 @@ interface SimpleDropdownProps {
   icon?: LucideIcon;
   items: SimpleDropdownItem[];
   onItemClick?: (item: SimpleDropdownItem) => void;
+  /** Menu alignment under the trigger (default right). */
+  menuAlign?: 'left' | 'right';
+  /** Merged onto the trigger button (e.g. full-width panel control). */
+  triggerClassName?: string;
 }
 
 export function SimpleDropdown({
@@ -19,6 +23,8 @@ export function SimpleDropdown({
   icon: Icon,
   items,
   onItemClick,
+  menuAlign = 'right',
+  triggerClassName = '',
 }: SimpleDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -50,23 +56,26 @@ export function SimpleDropdown({
   return (
     <div className="relative" ref={dropdownRef}>
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 text-neutral-text tracking-aplos transition-colors hover:opacity-80"
+        className={`flex min-w-0 items-center gap-2 text-neutral-text tracking-aplos transition-colors ${
+          triggerClassName || 'hover:opacity-80'
+        }`}
         style={{
-          fontSize: '14px',
-          lineHeight: '1.4',
+          fontSize: '13px',
+          lineHeight: 1.4,
         }}
       >
         {Icon && (
           <Icon
-            className="w-4 h-4 text-neutral-text"
+            className="shrink-0 text-neutral-text-weak"
             strokeWidth={2}
             style={{ width: '16px', height: '16px' }}
           />
         )}
-        <span>{label}</span>
+        <span className="min-w-0 flex-1 truncate text-left">{label}</span>
         <ChevronDown
-          className={`w-4 h-4 text-neutral-text-weak transition-transform ${
+          className={`shrink-0 text-neutral-text-weak transition-transform ${
             isOpen ? 'rotate-180' : ''
           }`}
           strokeWidth={2}
@@ -76,7 +85,9 @@ export function SimpleDropdown({
 
       {isOpen && items.length > 0 && (
         <div
-className="absolute top-full right-0 mt-1 bg-neutral-bg border border-neutral-border rounded-lg shadow-md min-w-[160px]"
+          className={`absolute top-full z-50 mt-1 max-h-[min(280px,50vh)] min-w-full overflow-y-auto rounded-lg border border-neutral-border bg-neutral-bg shadow-md ${
+            menuAlign === 'left' ? 'left-0' : 'right-0'
+          }`}
         >
           {items.map((item, index) => {
             const ItemIcon = item.icon;
