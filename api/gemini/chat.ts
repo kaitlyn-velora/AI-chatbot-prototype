@@ -40,8 +40,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
   contents.push({ role: "user", parts: [{ text: message }] });
 
-  const model =
-    process.env.GEMINI_MODEL || "gemini-2.0-flash";
+  const model = process.env.GEMINI_MODEL || "gemini-3-flash-preview";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(String(key).trim())}`;
 
   const payload: Record<string, unknown> = {
