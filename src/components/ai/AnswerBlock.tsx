@@ -1,4 +1,4 @@
-import { RichInsightText } from './RichInsightText';
+import { CopilotAnswerText, RichInsightText } from './RichInsightText';
 
 interface FollowUp {
   label: string;
@@ -25,12 +25,9 @@ export function AnswerBlock({ question, answer, source, followUps }: AnswerBlock
       </div>
 
       <div className="pl-0 sm:pl-1">
-        <p
-          className="text-neutral-text tracking-aplos whitespace-pre-line"
-          style={{ fontSize: '13px', lineHeight: 1.65 }}
-        >
-          <RichInsightText text={answer} />
-        </p>
+        <div className="text-neutral-text tracking-aplos">
+          <CopilotAnswerText text={answer} />
+        </div>
         {source && (
           <p
             className="text-neutral-text-weak tracking-aplos mt-3 border-t border-neutral-border pt-3"
