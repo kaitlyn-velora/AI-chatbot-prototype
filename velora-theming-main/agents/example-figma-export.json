@@ -1,0 +1,103 @@
+{
+  "variableCollections": {
+    "VariableCollectionId:1:1": {
+      "id": "VariableCollectionId:1:1",
+      "name": "Primitives/Colors",
+      "modes": [
+        {
+          "modeId": "1:0",
+          "name": "Light"
+        }
+      ],
+      "defaultModeId": "1:0",
+      "remote": false,
+      "hiddenFromPublishing": false,
+      "variableIds": [
+        "VariableID:1:2",
+        "VariableID:1:3"
+      ]
+    },
+    "VariableCollectionId:2:1": {
+      "id": "VariableCollectionId:2:1",
+      "name": "Theme/Light",
+      "modes": [
+        {
+          "modeId": "2:0",
+          "name": "Light"
+        }
+      ],
+      "defaultModeId": "2:0",
+      "remote": false,
+      "hiddenFromPublishing": false,
+      "variableIds": [
+        "VariableID:2:2"
+      ]
+    }
+  },
+  "variables": {
+    "VariableID:1:2": {
+      "id": "VariableID:1:2",
+      "name": "Neutral/900",
+      "key": "neutral-900-key",
+      "variableCollectionId": "VariableCollectionId:1:1",
+      "resolvedType": "COLOR",
+      "valuesByMode": {
+        "1:0": {
+          "r": 0.10196078568696976,
+          "g": 0.10196078568696976,
+          "b": 0.10196078568696976,
+          "a": 1
+        }
+      },
+      "remote": false,
+      "description": "",
+      "hiddenFromPublishing": false,
+      "scopes": [
+        "ALL_SCOPES"
+      ],
+      "codeSyntax": {}
+    },
+    "VariableID:1:3": {
+      "id": "VariableID:1:3",
+      "name": "Neutral/50",
+      "key": "neutral-50-key",
+      "variableCollectionId": "VariableCollectionId:1:1",
+      "resolvedType": "COLOR",
+      "valuesByMode": {
+        "1:0": {
+          "r": 0.9803921580314636,
+          "g": 0.9803921580314636,
+          "b": 0.9803921580314636,
+          "a": 1
+        }
+      },
+      "remote": false,
+      "description": "",
+      "hiddenFromPublishing": false,
+      "scopes": [
+        "ALL_SCOPES"
+      ],
+      "codeSyntax": {}
+    },
+    "VariableID:2:2": {
+      "id": "VariableID:2:2",
+      "name": "Neutral/Text/Default",
+      "key": "neutral-text-default-key",
+      "variableCollectionId": "VariableCollectionId:2:1",
+      "resolvedType": "COLOR",
+      "valuesByMode": {
+        "2:0": {
+          "type": "VARIABLE_ALIAS",
+          "id": "VariableID:1:2"
+        }
+      },
+      "remote": false,
+      "description": "Default text color for neutral elements",
+      "hiddenFromPublishing": false,
+      "scopes": [
+        "ALL_SCOPES"
+      ],
+      "codeSyntax": {}
+    }
+  }
+}

@@ -1,0 +1,77 @@
+name: Continuous Delivery
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Release Package
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Enable corepack for yarn
+        run: corepack enable
+
+      - name: Configure npm authentication
+        run: |
+          echo "//aplos.jfrog.io/artifactory/api/npm/aplos-node/:_authToken=${{ secrets.NPM_TOKEN }}" >> .npmrc
+          echo "//aplos.jfrog.io/artifactory/api/npm/aplos-node-local/:_authToken=${{ secrets.NPM_TOKEN }}" >> .npmrc
+
+      - name: Extract and validate tag version
+        id: versions
+        run: |
+          TAG_REF="${GITHUB_REF#refs/tags/}"
+          
+          # Ensure it starts with "v" otherwise could create weird releases
+          if [[ ! "$TAG_REF" =~ ^v ]]; then
+            echo "Invalid tag: $TAG_REF — must start with 'v'"
+            exit 1
+          fi
+
+          # Strip leading v
+          TAG_VERSION="${TAG_REF#v}"
+
+          # Enforce semver with optional prerelease
+          if [[ ! "$TAG_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]]; then
+            echo "Invalid semver: $TAG_REF — must be in format vX.Y.Z or vX.Y.Z-prerelease"
+            exit 1
+          fi
+
+          PKG_VERSION=$(node -p "require('./package.json').version")
+
+          echo "tag_version=$TAG_VERSION" >> $GITHUB_OUTPUT
+          echo "pkg_version=$PKG_VERSION" >> $GITHUB_OUTPUT
+
+          # Compare versions (ignore prerelease suffix for comparison)
+          TAG_VERSION_BASE="${TAG_VERSION%-*}"
+          PKG_VERSION_BASE="${PKG_VERSION%-*}"
+
+          if [[ "$PKG_VERSION_BASE" != "$TAG_VERSION_BASE" ]]; then
+            echo "Version mismatch: tag=v$TAG_VERSION vs package.json=$PKG_VERSION"
+            echo "Attempting to delete tag from origin..."
+            curl -s -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              https://api.github.com/repos/${{ github.repository }}/git/refs/tags/v$TAG_VERSION
+            exit 1
+          fi
+
+          echo "Version check passed: $PKG_VERSION"
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build
+        run: yarn build
+
+      - name: Publish to artifactory
+        run: |
+          echo "@velora:registry=https://aplos.jfrog.io/artifactory/api/npm/aplos-node-local/" >> .npmrc
+          npm publish --registry https://aplos.jfrog.io/artifactory/api/npm/aplos-node-local/
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

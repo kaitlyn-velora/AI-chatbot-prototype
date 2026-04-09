@@ -1,0 +1,117 @@
+# Figma Token Import Rule
+
+This rule provides context when working with Figma variable exports and token generation.
+
+## Token File Structure
+
+All token files follow a consistent JavaScript ES module format:
+
+```js
+export default {
+  // Token data
+};
+```
+
+## Token Categories
+
+### Primitives (`src/tokens/primitives/`)
+
+Raw design values exported from Figma:
+
+- **colors.js**: Color scales (Neutral, Purple, Blue, etc.) with numeric keys (0, 50, 100...999)
+- **spacing.js**: Spacing values in pixels (2, 4, 6...160, Base)
+- **border-radius.js**: Border radius values in pixels (4, 6, 8...24, Round, Base)
+- **font-size.js**: Font size values in pixels (0, 1, 3, 4, 5, Base)
+- **line-height.js**: Line height values in pixels (1, 2, 4...7, Base)
+
+### Brand (`src/tokens/brand/`)
+
+Brand-specific color mappings:
+
+- Maps primitive colors to semantic brand roles
+- Each brand file (aplos.js, keela.js, raisely.js) defines:
+  - `Primary`: Brand primary color scale
+  - `PrimaryDark`: Dark mode primary scale
+  - `Accent1`: Accent color scale
+  - `Accent1Dark`: Dark mode accent scale
+  - `Btn`: Button-specific tokens
+
+### Theme (`src/tokens/theme/`)
+
+Semantic tokens with references:
+
+- **light.js**: Light mode semantic tokens
+- **dark.js**: Dark mode semantic tokens
+- Uses `{ColorScale.Shade}` syntax to reference brand colors
+- Categories: Neutral, Primary, Danger, Success, Warning, Accent 1, Accent 2, Nav, Btn, Tooltip, Illustration, Skeleton, FocusRing, Chart
+
+### Fonts (`src/tokens/fonts/`)
+
+Typography definitions:
+
+- **families.js**: Font family definitions
+- **default.fonts.js**: Font configuration with families and weights
+
+## Reference System
+
+Theme tokens use a reference system:
+
+```js
+{
+  Neutral: {
+    Text: {
+      Default: '{Neutral.900}',  // References Neutral.900 from primitives
+    }
+  },
+  Primary: {
+    Bg: {
+      Strong: '{Primary.600}',   // References Primary.600 from brand tokens
+    }
+  }
+}
+```
+
+These references are resolved at build time by the build-themes.mjs script.
+
+## Value Types
+
+- **Colors**: Hex strings (e.g., `'#1a1a1a'`)
+- **Spacing/BorderRadius/FontSize/LineHeight**: Numbers in pixels (e.g., `16`)
+- **References**: Strings with curly braces (e.g., `'{Primary.800}'`)
+- **Font families**: Strings with font stack (e.g., `'Inter, sans-serif'`)
+- **Font weights**: Numbers (e.g., `400`, `600`)
+
+## Figma Export Mapping
+
+When importing from Figma:
+
+1. **Collection name** determines target file
+2. **Variable name** determines nested path (use `/` as separator)
+3. **Mode** determines light vs dark values
+4. **Resolved type** determines value conversion:
+   - COLOR → Hex string
+   - FLOAT → Number
+   - VARIABLE_ALIAS → Reference format
+
+## Build Process
+
+After updating token files:
+
+```bash
+npm run build        # Build CSS and copy files to dist
+npm run build:css    # Only build CSS files
+```
+
+The build script:
+1. Imports all token files
+2. Resolves references (`{Primary.800}` → actual color value)
+3. Generates CSS custom properties
+4. Outputs to `dist/css/{brand}.css`
+
+## Best Practices
+
+1. **Preserve structure**: Match existing token file structure
+2. **Consistent naming**: Use PascalCase for color scales, numeric keys for shades
+3. **References for themes**: Always use references in theme files, not hardcoded values
+4. **Document changes**: Add comments for non-obvious mappings
+5. **Validate output**: Run build after changes to catch errors

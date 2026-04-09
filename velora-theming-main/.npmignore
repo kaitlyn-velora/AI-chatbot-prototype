@@ -1,0 +1,9 @@
+src/
+agents/
+.cursor/
+node_modules/
+*.log
+.DS_Store
+.git
+.gitignore
+tsconfig.json

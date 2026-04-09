@@ -1,0 +1,58 @@
+{
+  "name": "@velora/theming",
+  "version": "0.5.0",
+  "description": "Design tokens and theming system for Velora design system",
+  "type": "module",
+  "main": "./dist/tokens/index.js",
+  "types": "./dist/tokens/types.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/tokens/types.d.ts",
+      "import": "./dist/tokens/index.js"
+    },
+    "./css/aplos": "./dist/css/aplos.css",
+    "./css/keela": "./dist/css/keela.css",
+    "./css/raisely": "./dist/css/raisely.css",
+    "./tailwind": {
+      "require": "./dist/tailwind/preset.js",
+      "import": "./dist/tailwind/preset.js"
+    },
+    "./tailwind/*": "./dist/tailwind/*",
+    "./tokens/*": "./dist/tokens/*"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "yarn build:css && yarn build:tailwind && yarn build:dist",
+    "build:css": "node src/scripts/build-themes.mjs",
+    "build:tailwind": "node src/scripts/build-tailwind-theme.mjs",
+    "build:dist": "node src/scripts/build-dist.mjs",
+    "prepublishOnly": "yarn build"
+  },
+  "keywords": [
+    "design-tokens",
+    "theming",
+    "css-variables",
+    "tailwind",
+    "design-system"
+  ],
+  "author": "Velora",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ARK-shared-platform/velora-theming.git"
+  },
+  "devDependencies": {
+    "prettier": "^3.2.5",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "tailwindcss": "^3.0.0 || ^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "tailwindcss": {
+      "optional": true
+    }
+  }
+}
