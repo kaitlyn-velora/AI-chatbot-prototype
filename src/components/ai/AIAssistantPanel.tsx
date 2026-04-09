@@ -209,11 +209,21 @@ export function AIAssistantPanel({
 
   useEffect(() => {
     let cancelled = false;
-    void fetchGeminiStatus().then((on) => {
-      if (!cancelled) setGeminiEnabled(on);
-    });
+    const refresh = () => {
+      void fetchGeminiStatus().then((on) => {
+        if (!cancelled) setGeminiEnabled(on);
+      });
+    };
+    refresh();
+    const onVis = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('focus', refresh);
     return () => {
       cancelled = true;
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('focus', refresh);
     };
   }, []);
 
@@ -240,23 +250,6 @@ export function AIAssistantPanel({
     [setConversation]
   );
 
-  const handleStarterClick = useCallback(
-    (starter: AIStarterConfig) => {
-      simulateAnswer(starter.label, starter.answer, starter.source, starter.followUps);
-    },
-    [simulateAnswer]
-  );
-
-  const handleFollowUp = useCallback(
-    (fu: AIFollowUpConfig) => {
-      if (fu.openReports && onOpenReportsFiltered) {
-        onOpenReportsFiltered(fu.openReports);
-      }
-      simulateAnswer(fu.label, fu.answer, fu.source, fu.followUps);
-    },
-    [simulateAnswer, onOpenReportsFiltered]
-  );
-
   const submitWithGemini = useCallback(
     async (q: string, scopes: Set<AccountingScopeId>) => {
       setIsTyping(true);
@@ -280,7 +273,7 @@ export function AIAssistantPanel({
           {
             question: q,
             answer:
-              `**Couldn’t get a live answer**\n\n${msg}\n\nAdd \`GEMINI_API_KEY\` to **.env.local** (see **.env.example**), restart \`npm run dev\`, and confirm the Gemini API is enabled for your Google Cloud project.`,
+              `**Couldn’t get a live answer**\n\n${msg}\n\n**Local:** add \`GEMINI_API_KEY\` to **.env.local**, restart \`npm run dev\`.\n\n**Vercel:** Project → Settings → Environment Variables → \`GEMINI_API_KEY\`, then redeploy. Confirm the Generative Language API is enabled for your key.`,
             source: 'Gemini error',
           },
         ]);
@@ -291,20 +284,37 @@ export function AIAssistantPanel({
     [config.pageTitle, setConversation]
   );
 
+  const handleStarterClick = useCallback(
+    (starter: AIStarterConfig) => {
+      if (geminiEnabled) {
+        void submitWithGemini(starter.label, new Set(accountingScopes));
+        return;
+      }
+      simulateAnswer(starter.label, starter.answer, starter.source, starter.followUps);
+    },
+    [geminiEnabled, accountingScopes, submitWithGemini, simulateAnswer]
+  );
+
+  const handleFollowUp = useCallback(
+    (fu: AIFollowUpConfig) => {
+      if (fu.openReports && onOpenReportsFiltered) {
+        onOpenReportsFiltered(fu.openReports);
+      }
+      if (geminiEnabled) {
+        void submitWithGemini(fu.label, new Set(accountingScopes));
+        return;
+      }
+      simulateAnswer(fu.label, fu.answer, fu.source, fu.followUps);
+    },
+    [geminiEnabled, accountingScopes, submitWithGemini, simulateAnswer, onOpenReportsFiltered]
+  );
+
   const handleSubmit = useCallback(() => {
     if (!inputValue.trim()) return;
     const q = inputValue.trim();
     setInputValue('');
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
     const scopesSnapshot = new Set(accountingScopes);
-    const demoTurn = matchAccountantDemoQuestion(q);
-    if (demoTurn) {
-      if (demoTurn.openReports && onOpenReportsFiltered) {
-        onOpenReportsFiltered(demoTurn.openReports);
-      }
-      simulateAnswer(q, demoTurn.answer, demoTurn.source, demoTurn.followUps);
-      return;
-    }
     const deflection = readOnlyDeflectionIfWriteLike(q);
     if (deflection) {
       simulateAnswer(q, deflection, 'Read-only mode');
@@ -312,6 +322,14 @@ export function AIAssistantPanel({
     }
     if (geminiEnabled) {
       void submitWithGemini(q, scopesSnapshot);
+      return;
+    }
+    const demoTurn = matchAccountantDemoQuestion(q);
+    if (demoTurn) {
+      if (demoTurn.openReports && onOpenReportsFiltered) {
+        onOpenReportsFiltered(demoTurn.openReports);
+      }
+      simulateAnswer(q, demoTurn.answer, demoTurn.source, demoTurn.followUps);
       return;
     }
     simulateAnswer(
